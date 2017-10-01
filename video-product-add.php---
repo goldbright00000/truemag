@@ -1,0 +1,432 @@
+<?php
+/* Template Name: Content Creator Page */ 
+
+?>
+
+<?php if (!is_user_logged_in() ) {
+//wp_redirect( 'http://biggboss.info/premise' );
+
+}
+?>
+<?php get_header();?>
+<?php
+ $current_user   = wp_get_current_user();
+ $userID=$current_user->ID;
+    $role_name      = $current_user->roles[0];
+     $people = array("content_creator", "administrator");
+     if (!in_array($role_name, $people)){
+     	 echo'<script>
+     jQuery(".page-template").css("display","none");
+     window.location.href = "http://biggboss.info/premise";</script>';
+     }
+      ?>
+<?php 
+$msg='';
+    /*submit frontend post using this code*/
+if($_POST['add_post']){  
+    //inserts new post into 'uploads' database
+       require_once(ABSPATH . "wp-admin" . '/includes/image.php');
+        require_once(ABSPATH . "wp-admin" . '/includes/file.php');
+        require_once(ABSPATH . "wp-admin" . '/includes/media.php');
+     $uploaddir = wp_upload_dir();
+		$file = $_FILES['featured' ];
+		$uploadfile = $uploaddir['path'] . '/' . basename( $file['name'] );
+		move_uploaded_file( $file['tmp_name'] , $uploadfile );
+		$filename = basename( $uploadfile );
+		$wp_filetype = wp_check_filetype(basename($filename), null );
+		$attachment = array(
+			'post_mime_type' => $wp_filetype['type'],
+			'post_title' => preg_replace('/\.[^.]+$/', '', $filename),
+			'post_content' => '',
+			'post_status' => 'inherit',
+			'menu_order' => $_i + 1000
+			);
+		$attach_id = wp_insert_attachment( $attachment, $uploadfile );
+			$post_info = array(
+		        'post_title' => wp_strip_all_tags( $_POST['postTitle'] ),
+		        'post_content' => $_POST['postContent'],
+		        'post_type' => 'product',
+		        'post_status'=>'draft'
+			);
+	$pid = wp_insert_post( $post_info );
+	update_post_meta($pid,'_thumbnail_id',$attach_id);
+    set_post_thumbnail( $pid, $thumbnail_id );
+    set_post_thumbnail_size( 300,300, true );
+    $price= intval(update_post_meta( $pid, '_regular_price', $_POST['_regular_price'] ));
+    if($price){
+    	$email =get_bloginfo('admin_email');
+    	$post_title 	=	$_POST['postTitle'];
+    	$post_content	=	$_POST['postContent'];
+	    $header .= "MIME-Version: 1.0\n";
+	    $header .= "Content-Type: text/html; charset=utf-8\n";
+	    $message = "Post Title: $post_title\n";
+	    $message .= "Post content: $post_content\n";
+	    $subject = "Product content";
+	    $subject = "=?utf-8?B?" . base64_encode($subject) . "?=";
+	    $to = $email;
+	    // send the email using wp_mail()
+	    wp_mail($to, $subject, $message, $header);
+    	$msg= '<div class="wpcf7-response-output wpcf7-display-none wpcf7-validation-errors" style="display: block;">Your merchandise is now successfully added. It will be included in the shop after it is approved by admin.</div>';
+    }
+}
+
+if($_POST['add_pledge']){  
+
+  $post_info = array(
+            'post_title' => wp_strip_all_tags( $_POST['PledgeTitle'] ),
+            'post_content' => $_POST['PledgeContent'],
+            'post_type' => 'product',
+            'post_status'=>'publish',
+            
+      );
+    $pid = wp_insert_post( $post_info );
+    if($_POST['stock']){
+      $_manage_stock= intval(update_post_meta( $pid, '_manage_stock','yes' ));
+      $_stock= intval(update_post_meta( $pid, '_stock',$_POST['stock'] ));
+
+    }   //stock
+     $gold_points= intval(update_post_meta( $pid, 'gold_points',$_POST['gold'] ));
+     $silver_points= intval(update_post_meta( $pid, 'silver_points',$_POST['silver'] ));
+     add_post_meta( $pid, '_end_date', $_POST['cut']); 
+     add_post_meta( $pid, 'level_pledge', $_POST['level']); 
+     wp_set_post_terms( $pid, array($_POST['Pledgetype']), 'product_cat' );
+     $havemeta = get_post_meta($_POST['video_id'], 'pledge_id', true); 
+     if($havemeta ){
+      $havemeta=$havemeta.','.$pid;
+      
+      update_post_meta( $_POST['video_id'], 'pledge_id', $havemeta);
+    } else{
+    add_post_meta( $_POST['video_id'], 'pledge_id', $pid, true );
+    }
+      //Add Pledge id in video meta
+     if($_POST['gold']){
+      $price= intval(update_post_meta( $pid, '_regular_price', $_POST['gold'] ));
+     } else{
+      $price= intval(update_post_meta( $pid, '_regular_price', $_POST['_regular_price'] ));
+     }
+   
+ $msg= '<div class="wpcf7-response-output wpcf7-display-none wpcf7-validation-errors" style="display: block;">Your Pledge is now successfully added. It will be included in the video Pledge list .</div>';
+
+}
+            ?>
+            <script>
+jQuery(document).ready(function(){
+   jQuery("#levelval").keypress(function (e) {
+     //if the letter is not digit then display error and don't type anything
+     if (e.which != 8 && e.which != 0 && (e.which < 48 || e.which > 57)) {
+        //display error message
+        jQuery("#errmsg2").html("Digits Only").show().fadeOut("slow");
+
+               return false;
+    }
+    
+
+   });
+     jQuery("#levelval").keyup(function (event) {
+    
+        var number = parseFloat(jQuery(this).val());
+        if(number > 99){
+           jQuery(this).val("");
+        }
+        if(number==0){
+           jQuery(this).val("1");
+
+        }
+    });
+       jQuery("#stock").keyup(function (event) {
+    
+        var number = parseFloat(jQuery(this).val());
+        if(number > 9999){
+           jQuery(this).val("");
+        }
+        if(number==0){
+           jQuery(this).val("1");
+
+        }
+    });
+   jQuery("#stock").keypress(function (e) {
+     //if the letter is not digit then display error and don't type anything
+     if (e.which != 8 && e.which != 0 && (e.which < 48 || e.which > 57)) {
+
+        //display error message
+        jQuery("#errmsg3").html("Digits Only").show().fadeOut("slow");
+
+               return false;
+    }
+   });
+     jQuery("#gold_val").keypress(function (e) {
+     //if the letter is not digit then display error and don't type anything
+     if (e.which != 8 && e.which != 0 && (e.which < 48 || e.which > 57)) {
+        //display error message
+        jQuery("#errmsg4").html("Digits Only").show().fadeOut("slow");
+               return false;
+    }
+   });
+     jQuery("#silver_val").keypress(function (e) {
+     //if the letter is not digit then display error and don't type anything
+     if (e.which != 8 && e.which != 0 && (e.which < 48 || e.which > 57)) {
+        //display error message
+        jQuery("#errmsg5").html("Digits Only").show().fadeOut("slow");
+               return false;
+    }
+   });
+	
+	jQuery('ul.tabs li').click(function(){
+		var tab_id = jQuery(this).attr('data-tab');
+		jQuery('ul.tabs li').removeClass('current');
+		jQuery('.tab-content').removeClass('current');
+		jQuery(this).addClass('current');
+		jQuery("#"+tab_id).addClass('current');
+	})
+	  jQuery("#quantity").keypress(function (e) {
+     //if the letter is not digit then display error and don't type anything
+     if (e.which != 8 && e.which != 0 && (e.which < 48 || e.which > 57)) {
+        //display error message
+        jQuery("#errmsg").html("Digits Only").show().css("color","red").fadeOut("slow");
+               return false;
+    }
+
+});
+	  jQuery("#user_profile_pic").change(function() {
+
+    var val = jQuery(this).val();
+    switch(val.substring(val.lastIndexOf('.') + 1).toLowerCase()){
+         case 'jpg': case 'png':case 'jpeg':
+          jQuery("#error").hide();
+           jQuery("#add_post").removeAttr('disabled');
+            break;
+        default:
+            jQuery(this).val('');
+            // error message here
+            jQuery("#error").html("Please Enter an Image").show().css("color","red");
+            jQuery("#add_post").attr('disabled', 'disabled');
+            break;
+    }
+});
+     jQuery('#date').datepicker({ dateFormat: 'dd-mm-yy' });
+       jQuery('input:radio[name=Pledgetype]').change(function() {
+        if (this.value == '167') {
+            jQuery('#cutofdate').show();
+             jQuery('#level').hide();
+            jQuery('#levelval').val('');
+            jQuery('#manage').hide();
+            jQuery('#gold').hide();
+            jQuery('#silver').hide();
+            jQuery('#gold_val').val('');
+            jQuery('#silver_val').val('');
+        }
+        else if (this.value == '166') {
+          jQuery('#level').show();
+            jQuery('#cutofdate').hide();  //manage
+            jQuery('#date').val('');
+            jQuery('#manage').show();
+            jQuery('#gold').show();
+            jQuery('#silver').show();
+
+
+        }
+    });
+	  });
+
+            </script>
+            <style>
+
+		ul.tabs{
+			margin: 0px;
+			padding: 0px;
+			list-style: none;
+		}
+		ul.tabs li{
+			background: none;
+			color: #222;
+			display: inline-block;
+			padding: 10px 15px;
+			cursor: pointer;
+		}
+		ul.tabs li.current{
+			background: #ededed;
+			color: #222;
+		}
+		.tab-content{
+			display: none;
+			background: #ededed;
+			padding: 15px;
+		}
+		.tab-content.current{
+			display: inherit;
+		}
+
+ .tab_video_merch li {
+  text-align: center;
+  width: 32%;
+}
+ .video_merch_contant {
+  background: transparent none repeat scroll 0 0 !important;
+  border: 1px solid #ededed;
+  margin-bottom: 20px;
+}
+ul.tabs li.current {
+  background: #ededed none repeat scroll 0 0;
+  border-bottom: 2px solid #f9c73d;
+  color: #222;
+}
+.tab_video_merch {
+  margin-top: 20px !important;
+ background: #f7f7f7 none repeat scroll 0 0;
+}
+#add_post, input[type="submit"] {
+  background: #f9c73d none repeat scroll 0 0;
+  border: 1px solid #f9c73d;
+  margin-top: 20px;
+}
+#add_post:hover, input[type="submit"]:hover {
+  background: #222 none repeat scroll 0 0;
+  border-color: #222;
+}
+label {
+  font-weight: normal;
+}
+.manage_btn {
+  background: #f9c73d none repeat scroll 0 0;
+  border: 1px solid #f9c73d;
+  border-radius: 3px;
+  color: #fff;
+  display: inline-block;
+  line-height: 1.5;
+  margin: 26px 0;
+  outline: medium none;
+  padding: 7px 18px;
+  text-align: center;
+  transition: all 0.2s ease 0s;
+}
+
+            </style>
+	<div class="container">
+		<div class="row">
+			<?php echo $msg; ?>
+			<div class="col-md-8 col-md-offset-2">
+
+			<ul class="tabs tab_video_merch">
+				<li class="tab-link current" data-tab="tab-1">Upload Video</li>
+				<li class="tab-link" data-tab="tab-2">Upload Merchandise</li>
+        <li class="tab-link" data-tab="tab-3">Upload Pledge</li>
+			</ul>
+			<div id="tab-1" class="tab-content current video_merch_contant">
+				<div class="col-md-12 col-sm-12 ">	
+					<div class="video-item">
+						<?php echo do_shortcode( '[contact-form-7 id="855" title="User submit videos"]' );?>
+					</div>
+				</div>
+			</div>
+		<div id="tab-2" class="tab-content video_merch_contant">
+		<div class="col-md-12 col-sm-12 ">	
+			<div class="woo-item">
+				<p>Please fill in the information below to submit your merchandise.</p>
+				<form method="post" enctype="multipart/form-data" name="mainForm" action="">
+                <div id="postTitleOuter">
+                    <label> Name of merchandise</label>
+                    <input type="text" name="postTitle" class="postTitle" required/>
+
+                    </div>
+                    <div id="postContentOuter">
+                    <label>Short description</label>
+                    <textarea rows="4" cols="20" class="postContent" name="postContent" required></textarea>
+                </div>
+                <div id="postTitleOuter">
+                    <label>Price</label>
+                    <input type="text" name="_regular_price" class="postTitle" id="quantity" required/>
+                   <span id="eveneror" style="display:none; color:red;"> Enter Only Odd Value</span>
+                    </div> 
+                    <div id="postImg"> <label>Merchandise Image</label>
+                    <input type="file" name="featured" id="user_profile_pic" class="size"/>
+                    <span id="error"></span>
+                </div>
+                    <input type="submit" name="add_post" id="add_post" value="Add Merchandise">
+            </form>
+		</div>
+	</div>
+	</div>
+    <div id="tab-3" class="tab-content video_merch_contant">
+    <div class="col-md-12 col-sm-12 ">  
+      <div class="woo-item">
+        <p>Please fill in the information below to submit your Pledge.</p>
+        <form method="post" enctype="multipart/form-data" name="mainForm" action="">
+          <?php
+          $args = array(
+                      'author'        =>  $userID, 
+                      'orderby'       =>  'post_date',
+                      'order'         =>  'ASC',
+                      'posts_per_page' => -1 // no limit
+                    );
+             $current_user_posts = get_posts( $args );
+                    echo '<select name="video_id">';
+                    echo '<option value="" selected="selected">Please pick a video below...</option>';
+                    foreach($current_user_posts as $post) : setup_postdata($post);
+                    ?>
+                        <option value="<?php echo $post->ID; ?>"><?php echo $post->post_title; ?></option>
+                    <?php endforeach;
+                    echo '</select>';
+                    ?>
+          <div id="postTitleOuter"><p id="alreay_crow" style="color:red;">This video already select for Crowdfunding</p>
+                    <label> Type of Pledge</label></br>
+                    <input type="radio" name="Pledgetype" value="166"/>Ballot
+                    <input id="bidd" type="radio" name="Pledgetype" value="167"/>Bid
+
+                    </div>
+                <div id="postTitleOuter">
+                    <label> Name of Pledge</label>
+                    <input type="text" name="PledgeTitle" class="postTitle" required/>
+
+                    </div>
+                    <div id="postContentOuter">
+                    <label>Short description</label>
+                   
+                     <?php wp_editor('','newtestfield',array('textarea_name'=> 'PledgeContent','textarea_rows'=>7,'wpautop'=>false));?>
+                 </div>
+                 <div id="postTitleOuter" style="display:none;">
+                    <label>Price</label>
+                    <input type="text" name="_regular_price" value="0" class="postTitle" id="quantity"required/>
+                    <span id="errmsg"></span>
+                    </div> 
+                      <div>
+                      
+                </div>
+
+                     <div id="cutofdate" style="display:none;">
+                    <label>Bidding Cut-Off Date</label>
+                    <input type="text"  id="date" name="cut" class="postTitle" />
+                </div>
+                
+                  <div id="level" style="display:none;">
+                    <label> Level Requirement</label>
+                    <input type="text"  id="levelval" name="level"   class="postTitle" />
+                    <span style="color:red" id="errmsg2"></span>
+                </div>
+                    <div   id="manage" style="display:none;">
+                    <label> Quantity</label>
+                    <input type="text"  id="stock" name="stock" value="1" class="postTitle" />
+                     <span style="color:red" id="errmsg3"></span>
+                </div>
+                 <div   id="gold" style="display:none;">
+                    <label> Gold Points Required For Purchase</label>
+                    <input type="text"  id="gold_val" name="gold" value="0" class="postTitle" />
+                     <span style="color:red" id="errmsg4"></span>
+                     <span id="evengold" style="display:none; color:red;"> Enter Only Odd Value</span>
+                </div>
+                 <div   id="silver" style="display:none;">
+                    <label> Silver Points Required For Purchase</label>
+                    <input type="text"  id="silver_val" name="silver" value="0" class="postTitle" />
+                    <span style="color:red" id="errmsg5"></span>
+                    <span id="evensilver" style="display:none; color:red;"> Enter Only Odd Value</span>
+                </div>
+                   
+                    <input type="submit" name="add_pledge" id="add_pledge" value="Add Pledge">
+            </form>
+    </div>
+  </div>
+  </div>
+	</div>
+	<div class="manage"><a href="<?php echo site_url();?>/edit-content/" class="manage_btn">Manage Your Content</a></div>
+</div>
+</div>
+<?php get_footer(); ?>
